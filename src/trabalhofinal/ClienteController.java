@@ -1,6 +1,7 @@
 package trabalhofinal;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ClienteController {
@@ -31,4 +32,16 @@ public class ClienteController {
         List<Cliente> clientes = clienteDAO.listarClientes();
         clienteTableModel.atualizarLista(clientes);
     }
+
+    public static List<Cliente> listarTodos() {
+        ClienteDAO clienteDAO = new ClienteDAO();
+        try {
+            return clienteDAO.listarTodos();
+        } catch (Exception e) {
+            // Log de erro (opcional) e tratamento
+            System.err.println("Erro ao listar clientes: " + e.getMessage());
+            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+        }
+    }
+
 }

@@ -87,4 +87,29 @@ public class ClienteDAO {
         } 
     }
 
+    public List<Cliente> listarTodos() throws SQLException {
+        List<Cliente> clientes = new ArrayList<>();
+        String sql = "SELECT * FROM clientes";
+
+        try (Connection conexao = ConexaoBanco.getConnection();
+             PreparedStatement stmt = conexao.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Cliente cliente = new Cliente(
+                        rs.getInt("id"),
+                        rs.getString("nome"),
+                        rs.getString("sobrenome"),
+                        rs.getString("rg"),
+                        rs.getString("cpf"),
+                        rs.getString("endereco")
+                );
+                clientes.add(cliente);
+            }
+        }
+
+        return clientes;
+    }
+
+
 }

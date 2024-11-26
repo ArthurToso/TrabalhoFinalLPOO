@@ -5,60 +5,107 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class SistemaBancarioView extends JFrame {
-    private ClienteController controller;
-    private ClienteTableModel tableModel;
-    private JTable tabela;
+    private JTable tabelaClientes;
+    private ClienteTableModel modeloTabela;
+    private JTextField txtBuscar;
+    private JComboBox<String> cmbFiltro;
     
     public SistemaBancarioView() {
-        setTitle("Sistema Bancario - Clientes");
-        setSize(800, 600);
+        setTitle("Gerenciamento de Clientes");
+        setSize(900, 600);
+        setLayout(new BorderLayout());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        tableModel = new ClienteTableModel(null);
-        controller = new ClienteController(tableModel);
-        tabela = new JTable(tableModel);
+        modeloTabela = new ClienteTableModel(new ArrayList<>());
+        tabelaClientes = new JTable(modeloTabela);
+        JScrollPane scrollPane = new JScrollPane(tabelaClientes);
+        add(scrollPane, BorderLayout.CENTER);
 
-        JButton btnAdcionar = new JButton("Adicionar Cliente");
-        JButton btnBuscar = new JButton("Buscar Cliente");
-        JTextField txtBuscar = new JTextField();
-        txtBuscar.setPreferredSize(new Dimension(200, 25));
+        txtBuscar = new JTextField(20);
+        cmbFiltro = new JComboBox<>(new String[]{"Nome", "Sobrenome", "RG", "CPF"});
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.addActionListener(e -> buscarClientes());
 
-        JPanel painelBotoes = new JPanel();
-        painelBotoes.add(btnAdcionar);
-        painelBotoes.add(new JLabel("Buscar:"));
-        painelBotoes.add(txtBuscar);
-        painelBotoes.add(btnBuscar);
+        JPanel painelBusca = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        painelBusca.add(new JLabel("Buscar por:"));
+        painelBusca.add(cmbFiltro);
+        painelBusca.add(txtBuscar);
+        painelBusca.add(btnBuscar);
+        add(painelBusca, BorderLayout.NORTH);
 
-        add(new JScrollPane(tabela), BorderLayout.CENTER);
-        add(painelBotoes, BorderLayout.SOUTH);
+        JButton btnAdicionar = new JButton("Adicionar");
+        JButton btnEditar = new JButton("Editar");
+        JButton btnExcluir = new JButton("Excluir");
 
-        btnAdcionar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String nome = JOptionPane.showInputDialog("Nome:");
-                String sobrenome = JOptionPane.showInputDialog("Sobrenome:");
-                String rg = JOptionPane.showInputDialog("RG:");
-                String cpf = JOptionPane.showInputDialog("CPF:");
-                String endereco = JOptionPane.showInputDialog("Endereço:");
-                Cliente cliente = new Cliente(0, nome, sobrenome, rg, cpf, endereco);
-                try {
-                    controller.adicionarCliente(cliente);
-                } catch (SQLException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        });
-
-        btnBuscar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String filtro = txtBuscar.getText();
-                controller.buscarClientes(filtro);
-            }
-        });
+        btnAdicionar.addActionListener(e -> adicionarCliente());
+        btnEditar.addActionListener(e -> editarCliente());
+        btnExcluir.addActionListener(e -> excluirCliente());
     }
+
+    private void buscarClientes(){
+        String filtro = (String) cmbFiltro.getSelectedItem();
+        String texto = txtBuscar.getText();
+
+        List resultados = ClienteController.buscarClientes(filtro, texto);
+        modeloTabela.atualizarLista((java.util.List<Cliente>) resultados);
+    }
+
+    public void adicionarCliente() throws SQLException {
+        // Campos para entrada de dados
+        JTextField nomeField = new JTextField();
+        JTextField sobrenomeField = new JTextField();
+        JTextField rgField = new JTextField();
+        JTextField cpfField = new JTextField();
+        JTextField enderecoField = new JTextField();
+
+        // Painel para organizar os campos
+        JPanel painel = new JPanel(new GridLayout(5, 2));
+        painel.add(new JLabel("Nome:"));
+        painel.add(nomeField);
+        painel.add(new JLabel("Sobrenome:"));
+        painel.add(sobrenomeField);
+        painel.add(new JLabel("RG:"));
+        painel.add(rgField);
+        painel.add(new JLabel("CPF:"));
+        painel.add(cpfField);
+        painel.add(new JLabel("Endereço:"));
+        painel.add(enderecoField);
+
+        // Exibe o diálogo para entrada de dados
+        int resultado = JOptionPane.showConfirmDialog(
+                this,
+                painel,
+                "Adicionar Cliente",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        // Se o usuário clicar em "OK", tenta salvar o cliente
+        if (resultado == JOptionPane.OK_OPTION) {
+            String nome = nomeField.getText();
+            String sobrenome = sobrenomeField.getText();
+            String rg = rgField.getText();
+            String cpf = cpfField.getText();
+            String endereco = enderecoField.getText();
+
+            // Verifica se todos os campos foram preenchidos
+            if (nome.isEmpty() || sobrenome.isEmpty() || rg.isEmpty() || cpf.isEmpty() || endereco.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Todos os campos devem ser preenchidos.", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // Cria um novo cliente e o adiciona ao banco de dados
+            Cliente cliente = new Cliente(0, nome, sobrenome, rg, cpf, endereco); // ID será gerado pelo banco
+            ClienteController.adicionarCliente(cliente);
+
+            // Atualiza a tabela com os novos dados
+            modeloTabela.atualizarLista(ClienteController.listarTodos());
+        }
+    }
+
     public static void main(String[] args){
         SwingUtilities.invokeLater(new Runnable() {
             @Override
