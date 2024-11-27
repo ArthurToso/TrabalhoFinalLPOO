@@ -45,7 +45,7 @@ public class SistemaBancarioView extends JFrame {
         btnExcluir.addActionListener(e -> excluirCliente());
     }
 
-    private void buscarClientes(){
+    public void buscarClientes(){
         String filtro = (String) cmbFiltro.getSelectedItem();
         String texto = txtBuscar.getText();
 
@@ -103,6 +103,20 @@ public class SistemaBancarioView extends JFrame {
 
             // Atualiza a tabela com os novos dados
             modeloTabela.atualizarLista(ClienteController.listarTodos());
+        }
+    }
+
+    private void editarCliente(){
+        int linhaSelecionada = tabelaClientes.getSelectedRow();
+        if (linhaSelecionada != -1) {
+            Cliente cliente = modeloTabela.getCliente(linhaSelecionada);
+            Cliente clienteAtualizado = ClienteForm.mostrarFormulario(cliente);
+            if (clienteAtualizado != null) {
+                ClienteController.atualizarCliente(clienteAtualizado);
+                modeloTabela.atualizarLista(ClienteController.listarTodos());
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Selecione um cliente para editar.");
         }
     }
 
