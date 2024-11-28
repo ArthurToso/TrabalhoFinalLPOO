@@ -4,7 +4,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConexaoBanco {
-    private static final String URL = "jdbc:mysql://localhost/jdbc";
+    private static final String URL = "jdbc:mysql://localhost/sistema_bancario";
     private static final String USER = "root";
     private static final String SENHA = "novaSenha";
    

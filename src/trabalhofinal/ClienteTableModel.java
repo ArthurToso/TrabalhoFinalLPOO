@@ -25,7 +25,12 @@ public class ClienteTableModel extends AbstractTableModel{
     public int getColumnCount(){
         return colunas.length;
     }
-    
+
+    public Cliente getCliente(int linha) {
+        return clientes.get(linha); // listaClientes é a lista usada para armazenar os clientes
+    }
+
+
     @Override
     public Object getValueAt(int rowIndex, int columnIndex){
         Cliente cliente = clientes.get(rowIndex);

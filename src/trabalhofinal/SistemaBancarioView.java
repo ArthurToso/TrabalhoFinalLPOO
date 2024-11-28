@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SistemaBancarioView extends JFrame {
     private JTable tabelaClientes;
@@ -40,17 +41,44 @@ public class SistemaBancarioView extends JFrame {
         JButton btnEditar = new JButton("Editar");
         JButton btnExcluir = new JButton("Excluir");
 
-        btnAdicionar.addActionListener(e -> adicionarCliente());
+        btnAdicionar.addActionListener(e -> {
+            try {
+                adicionarCliente();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
         btnEditar.addActionListener(e -> editarCliente());
         btnExcluir.addActionListener(e -> excluirCliente());
+
+        JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        painelBotoes.add(btnAdicionar);
+        painelBotoes.add(btnEditar);
+        painelBotoes.add(btnExcluir);
+        add(painelBotoes, BorderLayout.SOUTH);
+
+        carregarDadosTabela();
+
     }
 
     public void buscarClientes(){
         String filtro = (String) cmbFiltro.getSelectedItem();
         String texto = txtBuscar.getText();
 
-        List resultados = ClienteController.buscarClientes(filtro, texto);
-        modeloTabela.atualizarLista((java.util.List<Cliente>) resultados);
+        if(texto.isEmpty()){
+            JOptionPane.showMessageDialog(this, "Digite um texto para busca", "Aviso!", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try{
+            ClienteDAO clienteDAO = new ClienteDAO();
+            modeloTabela = new ClienteTableModel(new ArrayList<>());
+            ClienteController clienteController = new ClienteController(clienteDAO, modeloTabela);
+            List<Cliente> resultados = clienteController.buscarClientes(txtBuscar.getText());
+            modeloTabela.atualizarLista(resultados);
+        }catch (Exception e){
+            JOptionPane.showMessageDialog(this, "Erro ao buscar cliente" + e.getMessage(), "Erro!", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public void adicionarCliente() throws SQLException {
@@ -97,26 +125,97 @@ public class SistemaBancarioView extends JFrame {
                 return;
             }
 
-            // Cria um novo cliente e o adiciona ao banco de dados
-            Cliente cliente = new Cliente(0, nome, sobrenome, rg, cpf, endereco); // ID será gerado pelo banco
-            ClienteController.adicionarCliente(cliente);
-
-            // Atualiza a tabela com os novos dados
+            Cliente cliente = new Cliente(0, nome, sobrenome, rg, cpf, endereco);
+            try {
+                ClienteDAO clienteDAO = new ClienteDAO();
+                modeloTabela = new ClienteTableModel(new ArrayList<>());
+                ClienteController clienteController = new ClienteController(clienteDAO, modeloTabela);
+                clienteController.adicionarCliente(cliente);
+                carregarDadosTabela();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Erro ao adicionar cliente: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
             modeloTabela.atualizarLista(ClienteController.listarTodos());
+            modeloTabela.fireTableDataChanged();
         }
     }
 
     private void editarCliente(){
         int linhaSelecionada = tabelaClientes.getSelectedRow();
-        if (linhaSelecionada != -1) {
-            Cliente cliente = modeloTabela.getCliente(linhaSelecionada);
-            Cliente clienteAtualizado = ClienteForm.mostrarFormulario(cliente);
-            if (clienteAtualizado != null) {
-                ClienteController.atualizarCliente(clienteAtualizado);
-                modeloTabela.atualizarLista(ClienteController.listarTodos());
+        if (linhaSelecionada == -1) {
+            JOptionPane.showMessageDialog(this, "Selecione um cliente para editar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Cliente cliente = modeloTabela.getCliente(linhaSelecionada);
+        JTextField nomeField = new JTextField(cliente.getNome());
+        JTextField sobrenomeField = new JTextField(cliente.getSobrenome());
+        JTextField rgField = new JTextField(cliente.getRg());
+        JTextField cpfField = new JTextField(cliente.getCpf());
+        JTextField enderecoField = new JTextField(cliente.getEndereco());
+
+        JPanel painel = new JPanel(new GridLayout(5, 2));
+        painel.add(new JLabel("Nome:"));
+        painel.add(nomeField);
+        painel.add(new JLabel("Sobrenome:"));
+        painel.add(sobrenomeField);
+        painel.add(new JLabel("RG:"));
+        painel.add(rgField);
+        painel.add(new JLabel("CPF:"));
+        painel.add(cpfField);
+        painel.add(new JLabel("Endereço:"));
+        painel.add(enderecoField);
+
+        int resultado = JOptionPane.showConfirmDialog(this, painel, "Editar Cliente", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (resultado == JOptionPane.OK_OPTION) {
+            cliente.setNome(nomeField.getText());
+            cliente.setSobrenome(sobrenomeField.getText());
+            cliente.setRg(rgField.getText());
+            cliente.setCpf(cpfField.getText());
+            cliente.setEndereco(String.valueOf(enderecoField));
+
+            try {
+                ClienteDAO clienteDAO = new ClienteDAO();
+                modeloTabela = new ClienteTableModel(new ArrayList<>());
+                ClienteController clienteController = new ClienteController(clienteDAO, modeloTabela);
+                clienteController.atualizarCliente(cliente);
+                carregarDadosTabela();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Erro ao editar cliente: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
-        } else {
-            JOptionPane.showMessageDialog(this, "Selecione um cliente para editar.");
+        }
+    }
+
+    private void excluirCliente() {
+        int linhaSelecionada = tabelaClientes.getSelectedRow();
+        if (linhaSelecionada == -1) {
+            JOptionPane.showMessageDialog(this, "Selecione um cliente para excluir.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Cliente cliente = modeloTabela.getCliente(linhaSelecionada);
+        int confirmacao = JOptionPane.showConfirmDialog(this, "Deseja realmente excluir o cliente e suas contas?", "Confirmação", JOptionPane.YES_NO_OPTION);
+
+        if (confirmacao == JOptionPane.YES_OPTION) {
+            try {
+                ClienteDAO clienteDAO = new ClienteDAO();
+                modeloTabela = new ClienteTableModel(new ArrayList<>());
+                ClienteController clienteController = new ClienteController(clienteDAO, modeloTabela);
+                clienteController.excluirCliente(cliente.getId());
+                carregarDadosTabela();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Erro ao excluir cliente: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void carregarDadosTabela() {
+        try {
+            List<Cliente> clientes = ClienteController.listarTodos();
+            modeloTabela.atualizarLista(clientes);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Erro ao carregar dados: " + e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
